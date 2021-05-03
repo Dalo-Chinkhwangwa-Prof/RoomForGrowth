@@ -3,11 +3,14 @@ package com.coolcats.roomforgrowth;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.room.Room;
 
+import android.content.Context;
 import android.os.Bundle;
 import android.util.Log;
 
 import com.coolcats.roomforgrowth.model.data.Topic;
 import com.coolcats.roomforgrowth.model.db.RFGDatabase;
+import com.coolcats.roomforgrowth.presenter.Contract;
+import com.coolcats.roomforgrowth.presenter.TopicPresenter;
 import com.coolcats.roomforgrowth.utli.SingletonExample;
 import com.coolcats.roomforgrowth.view.InfoFragment;
 import com.coolcats.roomforgrowth.view.InputFragment;
@@ -15,10 +18,12 @@ import com.coolcats.roomforgrowth.view.InputFragment;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
-public class MainActivity extends AppCompatActivity implements InputFragment.TopicDelegate {
+public class MainActivity extends AppCompatActivity implements InputFragment.TopicDelegate, Contract.View {
 
     private InputFragment inputFragment;
     private InfoFragment infoFragment;
+
+    private Contract.Presenter presenter = new TopicPresenter(this);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -27,34 +32,29 @@ public class MainActivity extends AppCompatActivity implements InputFragment.Top
 
         inputFragment = (InputFragment) getSupportFragmentManager().findFragmentById(R.id.input_fragment);
         infoFragment = (InfoFragment) getSupportFragmentManager().findFragmentById(R.id.info_fragment);
-        readDatabase();
+
+        presenter.readFromDatabase();
     }
 
     @Override
     public void insertTopic(Topic topic) {
-        new Thread() {
-            @Override
-            public void run() {
-                super.run();
-                Log.d("TAG_X", "inserting topic");
-                RFGDatabase.getDatabase(MainActivity.this).getDAO().insertTopics(topic);
-                Log.d("TAG_X", "reading all...");
-                readDatabase();
-            }
-        }.start();
+        presenter.addTopic(topic);
     }
 
-    private void readDatabase() {
-        new Thread() {
-            @Override
-            public void run() {
-                super.run();
-                List<Topic> topics = RFGDatabase.getDatabase(MainActivity.this).getDAO().getAllTopics();
+    @Override
+    public void displayTopics(List<Topic> topicList) {
+        runOnUiThread(()->{
+            infoFragment.updateList(topicList);
+        });
+    }
 
-                runOnUiThread(() -> {
-                    infoFragment.updateList(topics);
-                });
-            }
-        }.start();
+    @Override
+    public void displayError(String error) {
+
+    }
+
+    @Override
+    public Context getContext() {
+        return this;
     }
 }
